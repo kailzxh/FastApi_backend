@@ -1,48 +1,31 @@
 from fastapi import HTTPException
+from sqlalchemy.orm import Session
+
+from models.task import Task
 
 
-tasks = {
-    1: {
-        "id": 1,
-        "name": "Learn FastAPI",
-        "user_id": 1
-    },
-    2: {
-        "id": 2,
-        "name": "Learn Python",
-        "user_id": 1
-    },
-    3: {
-        "id": 3,
-        "name": "Learn React",
-        "user_id": 2
-    }
-}
+def get_user_tasks(
+    db: Session,
+    user_id: int
+):
+
+    return db.query(Task).filter(
+        Task.user_id == user_id
+    ).all()
 
 
-def get_user_tasks(user_id: int):
+def get_user_task(
+    db: Session,
+    user_id: int,
+    task_id: int
+):
 
-    user_tasks = []
-
-    for task in tasks.values():
-
-        if task["user_id"] == user_id:
-            user_tasks.append(task)
-
-    return user_tasks
-
-
-def get_user_task(user_id: int, task_id: int):
-
-    task = tasks.get(task_id)
+    task = db.query(Task).filter(
+        Task.id == task_id,
+        Task.user_id == user_id
+    ).first()
 
     if task is None:
-        raise HTTPException(
-            status_code=404,
-            detail="Task not found"
-        )
-
-    if task["user_id"] != user_id:
         raise HTTPException(
             status_code=404,
             detail="Task not found for this user"
@@ -51,46 +34,84 @@ def get_user_task(user_id: int, task_id: int):
     return task
 
 
-def create_user_task(user_id: int, task_data):
+def create_user_task(
+    db: Session,
+    user_id: int,
+    task_data
+):
 
-    new_id = max(tasks.keys(), default=0) + 1
+    task = Task(
+        name=task_data.name,
+        user_id=user_id
+    )
 
-    new_task = {
-        "id": new_id,
-        "name": task_data.name,
-        "user_id": user_id
-    }
-
-    tasks[new_id] = new_task
-
-    return new_task
-
-
-def update_user_task(user_id: int, task_id: int, task_data):
-
-    task = get_user_task(user_id, task_id)
-
-    task["name"] = task_data.name
+    db.add(task)
+    db.commit()
+    db.refresh(task)
 
     return task
 
 
-def patch_user_task(user_id: int, task_id: int, task_data):
+def update_user_task(
+    db: Session,
+    user_id: int,
+    task_id: int,
+    task_data
+):
 
-    task = get_user_task(user_id, task_id)
+    task = get_user_task(
+        db,
+        user_id,
+        task_id
+    )
 
-    updates = task_data.model_dump(exclude_unset=True)
+    task.name = task_data.name
+
+    db.commit()
+    db.refresh(task)
+
+    return task
+
+
+def patch_user_task(
+    db: Session,
+    user_id: int,
+    task_id: int,
+    task_data
+):
+
+    task = get_user_task(
+        db,
+        user_id,
+        task_id
+    )
+
+    updates = task_data.model_dump(
+        exclude_unset=True
+    )
 
     for field, value in updates.items():
 
         if field == "name":
-            task["name"] = value
+            task.name = value
+
+    db.commit()
+    db.refresh(task)
 
     return task
 
 
-def delete_user_task(user_id: int, task_id: int):
+def delete_user_task(
+    db: Session,
+    user_id: int,
+    task_id: int
+):
 
-    get_user_task(user_id, task_id)
+    task = get_user_task(
+        db,
+        user_id,
+        task_id
+    )
 
-    del tasks[task_id]
+    db.delete(task)
+    db.commit()

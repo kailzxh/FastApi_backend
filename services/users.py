@@ -1,21 +1,27 @@
 from fastapi import HTTPException
+from sqlalchemy.orm import Session
+
+from models.user import User
 
 
-users = {
-    1: {
-        "id": 1,
-        "name": "Kailash"
-    },
-    2: {
-        "id": 2,
-        "name": "Rahul"
-    }
-}
+def create_user(db: Session, name: str):
+
+    user = User(
+        name=name
+    )
+
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+
+    return user
 
 
-def get_user(user_id: int):
+def get_user(db: Session, user_id: int):
 
-    user = users.get(user_id)
+    user = db.query(User).filter(
+        User.id == user_id
+    ).first()
 
     if user is None:
         raise HTTPException(
@@ -26,9 +32,13 @@ def get_user(user_id: int):
     return user
 
 
-def get_current_user():
+def get_current_user(db: Session):
 
-    user = users.get(1)
+    # Temporary for learning.
+    # Later JWT will determine the user.
+    user = db.query(User).filter(
+        User.id == 1
+    ).first()
 
     if user is None:
         raise HTTPException(
