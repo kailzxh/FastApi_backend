@@ -2,3 +2,5 @@ fastapi
 uvicorn
 pydantic
 sqlalchemy
+"pwdlib[argon2]"
+PyJWT
